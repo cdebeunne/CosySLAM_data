@@ -4,10 +4,11 @@ import pandas as pd
 from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from mocap_objects_frame_calibration import mocapTraj_generator
+from utils.wrapper import MocapWrapper
 import gepetto.corbaserver
 from gepetto.corbaserver import tools
 import time
+import utils.posemath as pm
 
 def GepettoViewerServer(windowName="python-pinocchio", sceneName="world", loadModel=False):
     """
@@ -33,12 +34,6 @@ def GepettoViewerServer(windowName="python-pinocchio", sceneName="world", loadMo
 
     return gui
 
-def isometry_to_vec(M):
-    r = R.from_matrix(M.rotation)
-    q = r.as_quat()
-    vec = np.concatenate((M.translation, q))
-    return vec
-
 
 if __name__ == '__main__':
 
@@ -48,6 +43,7 @@ if __name__ == '__main__':
     df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
     df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()]
     df_gt = pd.read_pickle(data_path + f'groundtruth_{alias}.pkl')
+    mocap_wrapper = MocapWrapper(df_gt)
 
     # loading calibration data
     calibration = np.load(data_path+'calibration_donut.npz')
@@ -56,7 +52,7 @@ if __name__ == '__main__':
 
     # selecting the frames of interest
     df_cosypose = df_cosypose
-    bm_M_cm_traj,_ = mocapTraj_generator(df_gt, df_cosypose)
+    bm_M_cm_traj,_ = mocap_wrapper.trajectory_generation(df_cosypose)
 
     # correcting the transformation wrt the calibration
     c_M_b_mocap = [cm_M_c.inverse() * bm_M_cm.inverse() * bm_M_b for bm_M_cm in bm_M_cm_traj]
@@ -73,7 +69,7 @@ if __name__ == '__main__':
 
     for i in range(1, 150):
         print("frame nbr :" + str(i))
-        vec_mocap = isometry_to_vec(c_M_b_mocap[i])
+        vec_mocap = pm.isometry_to_vec(c_M_b_mocap[i])
         gui.addLandmark ("mocap", 0.1)
         gui.applyConfiguration("mocap", vec_mocap.tolist())
         frame_mocap = tools.Vector6("mocap")

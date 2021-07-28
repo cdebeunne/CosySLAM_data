@@ -3,7 +3,7 @@ import pinocchio as pin
 import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from mocap_objects_frame_calibration import mocapTraj_generator
+from utils.wrapper import MocapWrapper
 
 def compute_speed(M_traj, timestamp):
     """
@@ -96,22 +96,22 @@ def mu_plot(nu_c_list, nu_b_list):
 
 if __name__ == '__main__':
     
-    alias = 'calib_switch'
+    alias = 'quick'
     data_path = 'data/'
 
     df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
     df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()]
     df_gt = pd.read_pickle(data_path + f'groundtruth_{alias}.pkl')
+    mocap_wrapper = MocapWrapper(df_gt)
 
     # cosypose trajectory
     c_M_b_cosy = [pin.SE3(T[0]) for T in df_cosypose['pose']]
-    N = len(c_M_b_cosy)
     
     # moCap trajectory, synchronized with cosypose's ts
-    bm_M_cm_traj, timestamp = mocapTraj_generator(df_gt, df_cosypose)
+    bm_M_cm_traj, timestamp = mocap_wrapper.trajectory_generation(df_cosypose)
     
     # loading calibration data
-    calibration = np.load(data_path + 'calibration.npz')
+    calibration = np.load(data_path + f'calibration_{alias}.npz')
     cm_M_c = pin.SE3(calibration['cm_M_c'])
     bm_M_b = pin.SE3(calibration['bm_M_b'])
 
@@ -128,39 +128,59 @@ if __name__ == '__main__':
     cosy_speed = compute_speed(c_M_b_cosy, timestamp)
     mocap_speed = compute_speed(c_M_b_mocap, timestamp)
 
+    # error values
+    trans_err = np.abs(poseMocap - poseCosy)
+    rot_err = np.abs(angleMocap - angleCosy)
+    rmse_trans = np.mean([np.linalg.norm(err) for err in trans_err])
+    rmse_rot = np.mean([np.linalg.norm(err) for err in rot_err])
+    print('rmse translation :' + str(rmse_trans))
+    print('rmse rotation : ' + str(rmse_rot*180/3.14))
+
     # loading coefficient dispersion
     data = np.load('nu_list.npz')
     nu_c_list = data['nu_c']
     nu_b_list = data['nu_b']
   
     # Let's plot!
-    plt.figure('Velocity comparison')
-    plt.plot(timestamp[1:], cosy_speed, label='cosypose')
-    plt.plot(timestamp[1:], mocap_speed, label='mocap')
-    plt.legend()
+    # plt.figure('Velocity comparison')
+    # plt.plot(timestamp[1:], cosy_speed, label='cosypose')
+    # plt.plot(timestamp[1:], mocap_speed, label='mocap')
+    # plt.legend()
 
-    fig = plt.figure('Trajectory comparison')
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(poseMocap[:,0], poseMocap[:,1], poseMocap[:,2], label='mocap')
-    ax.scatter(poseCosy[:,0], poseCosy[:,1], poseCosy[:,2], label='cosypose')
-    plt.legend()
+    # fig = plt.figure('Trajectory comparison')
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.scatter(poseMocap[:,0], poseMocap[:,1], poseMocap[:,2], label='mocap')
+    # ax.scatter(poseCosy[:,0], poseCosy[:,1], poseCosy[:,2], label='cosypose')
+    # plt.legend()
 
     plt.figure('Translation comparison')
     plt.plot(timestamp, transNorm_cosy, label='cosypose')
     plt.plot(timestamp, transNorm_mocap, label='mocap')
     plt.legend()
 
-    # plt.figure('Pose')
-    # ax1 = plt.subplot(131)
-    # ax1.plot(poseMocap[:,0], label='mocap')
-    # ax1.plot(poseCosy[:,0], label='cosy')
-    # ax2 = plt.subplot(132)
-    # ax2.plot(poseMocap[:,1], label='mocap')
-    # ax2.plot(poseCosy[:,1], label='cosy')
-    # ax3 = plt.subplot(133)
-    # ax3.plot(poseMocap[:,2], label='mocap')
-    # ax3.plot(poseCosy[:,2], label='cosy')
-    # plt.legend()
+    plt.figure('Translation error')
+    ax1 = plt.subplot(131)
+    ax1.plot(poseMocap[:,0], label='mocap')
+    ax1.plot(poseCosy[:,0], label='cosy')
+    ax2 = plt.subplot(132)
+    ax2.plot(poseMocap[:,1], label='mocap')
+    ax2.plot(poseCosy[:,1], label='cosy')
+    ax3 = plt.subplot(133)
+    ax3.plot(poseMocap[:,2], label='mocap')
+    ax3.plot(poseCosy[:,2], label='cosy')
+    plt.legend()
+
+    plt.figure('Rotation error')
+    ax1 = plt.subplot(131)
+    ax1.plot(angleMocap[:,0], label='mocap')
+    ax1.plot(angleCosy[:,0], label='cosy')
+    ax2 = plt.subplot(132)
+    ax2.plot(angleMocap[:,1], label='mocap')
+    ax2.plot(angleCosy[:,1], label='cosy')
+    ax3 = plt.subplot(133)
+    ax3.plot(angleMocap[:,2], label='mocap')
+    ax3.plot(angleCosy[:,2], label='cosy')
+    plt.legend()
 
     # mu_plot(nu_c_list, nu_b_list)
     plt.show()
