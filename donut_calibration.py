@@ -36,8 +36,8 @@ class CostFrameCalibration:
             T_k[0:3,0:3] = R_k
             k_M_b = pin.SE3(T_k)
 
-            res[3*i:3*i+3] = (c_M_k * k_M_b * b_M_bm * bm_M_cm * self.cm_M_c).translation
-            res[3*(i+1):3*(i+1)+3] = pin.log3((c_M_k * k_M_b * b_M_bm * bm_M_cm * self.cm_M_c).rotation)*180/3.14
+            res[6*i:6*i+3]   = (c_M_k * k_M_b * b_M_bm * bm_M_cm * self.cm_M_c).translation
+            res[6*i+3:6*i+6] = pin.log3((c_M_k * k_M_b * b_M_bm * bm_M_cm * self.cm_M_c).rotation)*180/3.14
         
         self.cost_arr.append(np.linalg.norm(res))
 
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     df_gt = pd.read_pickle(data_path + f'groundtruth_{alias}.pkl')
 
     # let's get the good calibration for the camera frame
-    calib = np.load('laas_calib_switch/calibration.npz')
+    calib = np.load(data_path+'calibration.npz')
     cm_M_c = pin.SE3(calib['cm_M_c'])
 
     # cosypose trajectory
