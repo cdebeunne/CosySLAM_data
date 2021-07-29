@@ -29,7 +29,7 @@ class CostFrameCalibration:
         for i in range(self.N):
             bm_M_cm = self.bm_M_cm_traj[i]
             c_M_b  = self.c_M_b_cosy_traj[i]
-            res[6*i:6*i+3]   = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).translation*5
+            res[6*i:6*i+3]   = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).translation*15
             res[6*i+3:6*i+6] = pin.log3((c_M_b * b_M_bm * bm_M_cm * cm_M_c).rotation)
             # Rot = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).rotation
             # r = R.from_matrix(Rot)
@@ -47,7 +47,7 @@ class CostFrameCalibration:
 
 if __name__ == '__main__':
 
-    alias = 'quick'
+    alias = 'legrand1'
     data_path = 'data/'
 
     df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
         # cosypose trajectory
         counter = 0
-        c_M_b_traj = [pin.SE3(T[0]) for T in df_cosypose_sample['pose']]
+        c_M_b_traj = [pin.SE3(T) for T in df_cosypose_sample['pose']]
         N = len(c_M_b_traj)
         bm_M_cm_traj,_ = mocap_wrapper.trajectory_generation(df_cosypose_sample)
 

@@ -75,7 +75,7 @@ if __name__ == '__main__':
         frame_mocap = tools.Vector6("mocap")
         frame_mocap.create(gui)
 
-        vec_cosy = isometry_to_vec(c_M_b_cosy[i])
+        vec_cosy = pm.isometry_to_vec(c_M_b_cosy[i])
         gui.addLandmark ("cosy", 0.5)
         gui.applyConfiguration("cosy", vec_cosy.tolist())
         frame_mocap = tools.Vector6("cosy")

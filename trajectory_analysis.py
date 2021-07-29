@@ -2,7 +2,7 @@ import numpy as np
 import pinocchio as pin
 import pandas as pd
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+import utils.posemath as pm
 from utils.wrapper import MocapWrapper
 
 def compute_speed(M_traj, timestamp):
@@ -96,16 +96,16 @@ def mu_plot(nu_c_list, nu_b_list):
 
 if __name__ == '__main__':
     
-    alias = 'quick'
+    alias = 'legrand1'
     data_path = 'data/'
 
     df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
-    df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()]
+    df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()][0:200]
     df_gt = pd.read_pickle(data_path + f'groundtruth_{alias}.pkl')
     mocap_wrapper = MocapWrapper(df_gt)
 
     # cosypose trajectory
-    c_M_b_cosy = [pin.SE3(T[0]) for T in df_cosypose['pose']]
+    c_M_b_cosy = [pin.SE3(T) for T in df_cosypose['pose']]
     
     # moCap trajectory, synchronized with cosypose's ts
     bm_M_cm_traj, timestamp = mocap_wrapper.trajectory_generation(df_cosypose)
@@ -121,20 +121,20 @@ if __name__ == '__main__':
     # trajectory to plot
     poseMocap = np.array([c_M_b.inverse().translation for c_M_b in c_M_b_mocap])
     poseCosy = np.array([c_M_b.inverse().translation for c_M_b in c_M_b_cosy])
-    angleMocap = np.array([pin.log3(c_M_b.inverse().rotation) for c_M_b in c_M_b_mocap])
-    angleCosy = np.array([pin.log3(c_M_b.inverse().rotation) for c_M_b in c_M_b_cosy])
+    angleMocap = np.array([pin.log3(c_M_b.rotation) for c_M_b in c_M_b_mocap])
+    angleCosy = np.array([pin.log3(c_M_b.rotation) for c_M_b in c_M_b_cosy])
     transNorm_mocap = [np.linalg.norm(t) for t in poseMocap]
     transNorm_cosy = [np.linalg.norm(t) for t in poseCosy]
-    cosy_speed = compute_speed(c_M_b_cosy, timestamp)
-    mocap_speed = compute_speed(c_M_b_mocap, timestamp)
+    # cosy_speed = compute_speed(c_M_b_cosy, timestamp)
+    # mocap_speed = compute_speed(c_M_b_mocap, timestamp)
 
     # error values
     trans_err = np.abs(poseMocap - poseCosy)
     rot_err = np.abs(angleMocap - angleCosy)
-    rmse_trans = np.mean([np.linalg.norm(err) for err in trans_err])
-    rmse_rot = np.mean([np.linalg.norm(err) for err in rot_err])
+    rmse_trans = np.mean([np.mean(err) for err in trans_err])
+    rmse_rot = np.mean([np.mean(pm.log3_to_euler(err)) for err in rot_err])
     print('rmse translation :' + str(rmse_trans))
-    print('rmse rotation : ' + str(rmse_rot*180/3.14))
+    print('rmse rotation : ' + str(rmse_rot))
 
     # loading coefficient dispersion
     data = np.load('nu_list.npz')
@@ -147,16 +147,16 @@ if __name__ == '__main__':
     # plt.plot(timestamp[1:], mocap_speed, label='mocap')
     # plt.legend()
 
-    # fig = plt.figure('Trajectory comparison')
-    # ax = fig.add_subplot(111, projection='3d')
-    # ax.scatter(poseMocap[:,0], poseMocap[:,1], poseMocap[:,2], label='mocap')
-    # ax.scatter(poseCosy[:,0], poseCosy[:,1], poseCosy[:,2], label='cosypose')
-    # plt.legend()
-
-    plt.figure('Translation comparison')
-    plt.plot(timestamp, transNorm_cosy, label='cosypose')
-    plt.plot(timestamp, transNorm_mocap, label='mocap')
+    fig = plt.figure('Trajectory comparison')
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(poseMocap[:,0], poseMocap[:,1], poseMocap[:,2], label='mocap')
+    ax.scatter(poseCosy[:,0], poseCosy[:,1], poseCosy[:,2], label='cosypose')
     plt.legend()
+
+    # plt.figure('Translation comparison')
+    # plt.plot(timestamp, transNorm_cosy, label='cosypose')
+    # plt.plot(timestamp, transNorm_mocap, label='mocap')
+    # plt.legend()
 
     plt.figure('Translation error')
     ax1 = plt.subplot(131)

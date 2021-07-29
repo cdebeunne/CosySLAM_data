@@ -7,7 +7,7 @@ from scipy import optimize
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
-from mocap_objects_frame_calibration import mocapTraj_generator
+from utils.wrapper import MocapWrapper
 
 
 class CostFrameCalibration:
@@ -36,8 +36,8 @@ class CostFrameCalibration:
             T_k[0:3,0:3] = R_k
             k_M_b = pin.SE3(T_k)
 
-            res[6*i:6*i+3]   = (c_M_k * k_M_b * b_M_bm * bm_M_cm * self.cm_M_c).translation
-            res[6*i+3:6*i+6] = pin.log3((c_M_k * k_M_b * b_M_bm * bm_M_cm * self.cm_M_c).rotation)*180/3.14
+            res[6*i:6*i+3]   = (c_M_k * k_M_b * b_M_bm * bm_M_cm * self.cm_M_c).translation*10
+            res[6*i+3:6*i+6] = pin.log3((c_M_k * k_M_b * b_M_bm * bm_M_cm * self.cm_M_c).rotation)
         
         self.cost_arr.append(np.linalg.norm(res))
 
@@ -51,16 +51,17 @@ if __name__ == '__main__':
     df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
     df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()]
     df_gt = pd.read_pickle(data_path + f'groundtruth_{alias}.pkl')
+    mocap_wrapper = MocapWrapper(df_gt)
 
     # let's get the good calibration for the camera frame
-    calib = np.load(data_path+'calibration.npz')
+    calib = np.load(data_path+'calibration_switchBonus.npz')
     cm_M_c = pin.SE3(calib['cm_M_c'])
 
     # cosypose trajectory
     counter = 0
     c_M_b_traj = [pin.SE3(T[0]) for T in df_cosypose['pose']]
     N = len(c_M_b_traj)
-    bm_M_cm_traj,_ = mocapTraj_generator(df_gt, df_cosypose)
+    bm_M_cm_traj,_ = mocap_wrapper.trajectory_generation(df_cosypose)
 
     # filter
     c_M_b_traj = c_M_b_traj[:150]
@@ -73,7 +74,7 @@ if __name__ == '__main__':
     x0 = np.zeros(6 + N)  
     for i in range(2):
         # r = optimize.least_squares(cost.f, x0, jac='3-point', method='trf', verbose=2)
-        r = optimize.least_squares(cost.f, x0, jac='3-point', method='lm', verbose=2)
+        r = optimize.least_squares(cost.f, x0, jac='2-point', method='lm', verbose=2)
         x0 = r.x
     nu_b = r.x[:6]
 
