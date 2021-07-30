@@ -16,7 +16,7 @@ class CostFrameCalibration:
         self.bm_M_cm_traj = bm_M_cm_traj
         self.c_M_b_cosy_traj = c_M_b_cosy_traj
         self.N = len(bm_M_cm_traj)
-        self.N_res = 6*N  # size of the trajectory x 6 degrees of freedom of the se3 lie algebra
+        self.N_res = 6*self.N  # size of the trajectory x 6 degrees of freedom of the se3 lie algebra
 
     def f(self, x):
         self.x_arr.append(x)
@@ -29,7 +29,7 @@ class CostFrameCalibration:
         for i in range(self.N):
             bm_M_cm = self.bm_M_cm_traj[i]
             c_M_b  = self.c_M_b_cosy_traj[i]
-            res[6*i:6*i+3]   = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).translation*15
+            res[6*i:6*i+3]   = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).translation*100
             res[6*i+3:6*i+6] = pin.log3((c_M_b * b_M_bm * bm_M_cm * cm_M_c).rotation)
             # Rot = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).rotation
             # r = R.from_matrix(Rot)
@@ -47,36 +47,49 @@ class CostFrameCalibration:
 
 if __name__ == '__main__':
 
-    alias = 'legrand1'
+    aliases = ['switch1','switch3','switch4','switch5']
+    aliases = ['legrand1', 'legrand2', 'legrand4']
     data_path = 'data/'
 
-    df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
-    df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()]
-    df_gt = pd.read_pickle(data_path + f'groundtruth_{alias}.pkl')
-    mocap_wrapper = MocapWrapper(df_gt)
+    dfs_cosypose = []
+    mocap_wrappers = []
+    for alias in aliases:
+        df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
+        df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()]
+        df_gt = pd.read_pickle(data_path + f'groundtruth_{alias}.pkl')
+        mocap_wrapper = MocapWrapper(df_gt)
+        dfs_cosypose.append(df_cosypose)
+        mocap_wrappers.append(mocap_wrapper)
 
     nu_c_list = []
     nu_b_list = []
 
     n_iter = 1
-    n_samples = 300
+    n_samples = 150
 
     for i in range(n_iter):
-        if n_iter == 1:
-            df_cosypose_sample = df_cosypose
-        else:
-            df_cosypose_sample = df_cosypose.sample(n=n_samples, random_state=i)
-
-
-        # cosypose trajectory
-        counter = 0
-        c_M_b_traj = [pin.SE3(T) for T in df_cosypose_sample['pose']]
-        N = len(c_M_b_traj)
-        bm_M_cm_traj,_ = mocap_wrapper.trajectory_generation(df_cosypose_sample)
-
-        # priors
-        cost = CostFrameCalibration(bm_M_cm_traj, c_M_b_traj)
         
+        c_M_b_traj = []
+        bm_M_cm_traj = []
+
+        for j in range (len(aliases)):
+            mocap_wrapper = mocap_wrappers[j]
+            df_cosypose = dfs_cosypose[j]
+
+            if n_iter == 1:
+                df_cosypose_sample = df_cosypose
+            else:
+                df_cosypose_sample = pd.concat([df_cosypose[1:].sample(n=n_samples, random_state=i),df_cosypose[0:1]])
+
+            # cosypose trajectory
+            c_M_b_traj += [pin.SE3(T) for T in df_cosypose_sample['pose']]
+            bm_M_cm_traj_j,_ = mocap_wrapper.trajectory_generation(df_cosypose_sample)
+            bm_M_cm_traj += bm_M_cm_traj_j
+
+        # cost function
+        cost = CostFrameCalibration(bm_M_cm_traj, c_M_b_traj)
+        N = len(c_M_b_traj)
+        print(N)
         x0 = np.zeros(12)  # chosen to be [nu_c, nu_b]
         for i in range(2):
             r = optimize.least_squares(cost.f, x0, jac='2-point', method='lm', verbose=2)
@@ -94,7 +107,7 @@ if __name__ == '__main__':
     print('bm_M_b_est\n', bm_M_b_est)
 
     np.savez('nu_list.npz', nu_c=nu_c_list, nu_b = nu_b_list)
-    np.savez(data_path+f'calibration_{alias}.npz', cm_M_c=cm_M_c_est, bm_M_b=bm_M_b_est)
+    np.savez(data_path+f'calibration_{alias[:-1]}.npz', cm_M_c=cm_M_c_est, bm_M_b=bm_M_b_est)
     
     print('r.cost')
     print(r.cost)

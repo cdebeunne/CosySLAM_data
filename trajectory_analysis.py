@@ -64,43 +64,44 @@ def mu_plot(nu_c_list, nu_b_list):
     v1c = nu_c_list[:,0]
     v2c = nu_c_list[:,1]
     v3c = nu_c_list[:,2]
-    w1c = nu_c_list[:,3]
-    w2c = nu_c_list[:,4]
-    w3c = nu_c_list[:,5]
+    w1c = nu_c_list[:,3]*180/3.14
+    w2c = nu_c_list[:,4]*180/3.14
+    w3c = nu_c_list[:,5]*180/3.14
 
     v1b = nu_b_list[:,0]
     v2b = nu_b_list[:,1]
     v3b = nu_b_list[:,2]
-    w1b = nu_b_list[:,3]
-    w2b = nu_b_list[:,4]
-    w3b = nu_b_list[:,5]
+    w1b = nu_b_list[:,3]*180/3.14
+    w2b = nu_b_list[:,4]*180/3.14
+    w3b = nu_b_list[:,5]*180/3.14
     
     plt.figure()
-    plt.plot('v1', [v1c], 'gx')
-    plt.plot('v2', [v2c], 'gx')
-    plt.plot('v3', [v3c], 'gx')
-    plt.plot('w1', [w1c], 'rx')
-    plt.plot('w2', [w2c], 'rx')
-    plt.plot('w3', [w3c], 'rx')
-    plt.title('Dispersion of R^6 coefficients of cm_M_c')
+    plt.plot('w1_object', [w1b], 'rx')
+    plt.plot('w2_object', [w2b], 'rx')
+    plt.plot('w3_object', [w3b], 'rx')
+    plt.plot('w1_camera', [w1c], 'rx')
+    plt.plot('w2_camera', [w2c], 'rx')
+    plt.plot('w3_camera', [w3c], 'rx')
+    plt.title('Dispersion of rotation coefficients')
 
     plt.figure()
-    plt.plot('v1', [v1b], 'gx')
-    plt.plot('v2', [v2b], 'gx')
-    plt.plot('v3', [v3b], 'gx')
-    plt.plot('w1', [w1b], 'rx')
-    plt.plot('w2', [w2b], 'rx')
-    plt.plot('w3', [w3b], 'rx')
-    plt.title('Dispersion of R^6 coefficients of bm_M_b')
+    plt.plot('v1_object', [v1b], 'gx')
+    plt.plot('v2_object', [v2b], 'gx')
+    plt.plot('v3_object', [v3b], 'gx')
+    plt.plot('v1_camera', [v1c], 'gx')
+    plt.plot('v2_camera', [v2c], 'gx')
+    plt.plot('v3_camera', [v3c], 'gx')
+    
+    plt.title('Dispersion of translation coefficient')
     return
 
 if __name__ == '__main__':
     
-    alias = 'legrand1'
+    alias = 'switch1'
     data_path = 'data/'
 
     df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
-    df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()][0:200]
+    df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()]
     df_gt = pd.read_pickle(data_path + f'groundtruth_{alias}.pkl')
     mocap_wrapper = MocapWrapper(df_gt)
 
@@ -111,7 +112,7 @@ if __name__ == '__main__':
     bm_M_cm_traj, timestamp = mocap_wrapper.trajectory_generation(df_cosypose)
     
     # loading calibration data
-    calibration = np.load(data_path + f'calibration_{alias}.npz')
+    calibration = np.load(data_path + f'calibration_{alias[:-1]}.npz')
     cm_M_c = pin.SE3(calibration['cm_M_c'])
     bm_M_b = pin.SE3(calibration['bm_M_b'])
 
@@ -125,14 +126,12 @@ if __name__ == '__main__':
     angleCosy = np.array([pin.log3(c_M_b.rotation) for c_M_b in c_M_b_cosy])
     transNorm_mocap = [np.linalg.norm(t) for t in poseMocap]
     transNorm_cosy = [np.linalg.norm(t) for t in poseCosy]
-    # cosy_speed = compute_speed(c_M_b_cosy, timestamp)
-    # mocap_speed = compute_speed(c_M_b_mocap, timestamp)
 
     # error values
-    trans_err = np.abs(poseMocap - poseCosy)
-    rot_err = np.abs(angleMocap - angleCosy)
-    rmse_trans = np.mean([np.mean(err) for err in trans_err])
-    rmse_rot = np.mean([np.mean(pm.log3_to_euler(err)) for err in rot_err])
+    trans_err = poseMocap - poseCosy
+    rot_err = angleMocap - angleCosy
+    rmse_trans = np.sqrt(np.mean([err*err for err in trans_err]))
+    rmse_rot = np.sqrt(np.mean([err*err for err in rot_err]))*180/3.14
     print('rmse translation :' + str(rmse_trans))
     print('rmse rotation : ' + str(rmse_rot))
 
@@ -182,6 +181,6 @@ if __name__ == '__main__':
     ax3.plot(angleCosy[:,2], label='cosy')
     plt.legend()
 
-    # mu_plot(nu_c_list, nu_b_list)
+    mu_plot(nu_c_list, nu_b_list)
     plt.show()
   

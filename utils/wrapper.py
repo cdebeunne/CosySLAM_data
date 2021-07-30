@@ -55,7 +55,7 @@ class ErrorWrapper:
     def create_df(self, aliases):
         delta_count = 0
         for alias in aliases:
-            calibration_path = self.data_path + f'calibration_{alias}.npz'
+            calibration_path = self.data_path + f'calibration_{alias[:-1]}.npz'
 
             df_cosypose = pd.read_pickle(self.data_path+'results_{}_ts.pkl'.format(alias))
             df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()]
