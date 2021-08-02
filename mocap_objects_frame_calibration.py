@@ -29,12 +29,12 @@ class CostFrameCalibration:
         for i in range(self.N):
             bm_M_cm = self.bm_M_cm_traj[i]
             c_M_b  = self.c_M_b_cosy_traj[i]
-            res[6*i:6*i+3]   = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).translation*100
-            res[6*i+3:6*i+6] = pin.log3((c_M_b * b_M_bm * bm_M_cm * cm_M_c).rotation)
-            # Rot = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).rotation
-            # r = R.from_matrix(Rot)
-            # q = R.as_quat(r)
-            # res[6*i+3:6*i+6] = q[0:3]
+            res[6*i:6*i+3]   = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).translation*10
+            # res[6*i+3:6*i+6] = pin.log3((c_M_b * b_M_bm * bm_M_cm * cm_M_c).rotation)
+            Rot = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).rotation
+            r = R.from_matrix(Rot)
+            q = R.as_quat(r)
+            res[6*i+3:6*i+6] = q[0:3]
 
             # res[9*i+3:9*i+6] = c_M_b.rotation[:,0] - (b_M_bm * bm_M_cm * cm_M_c).inverse().rotation[:,0]
             # res[9*i+6:9*i+9] = c_M_b.rotation[:,1] - (b_M_bm * bm_M_cm * cm_M_c).inverse().rotation[:,1]
@@ -46,9 +46,9 @@ class CostFrameCalibration:
     
 
 if __name__ == '__main__':
-
+    
     aliases = ['switch1','switch3','switch4','switch5']
-    aliases = ['legrand1', 'legrand2', 'legrand4']
+    aliases = ['legrand1','legrand2', 'legrand4']
     data_path = 'data/'
 
     dfs_cosypose = []
@@ -89,7 +89,6 @@ if __name__ == '__main__':
         # cost function
         cost = CostFrameCalibration(bm_M_cm_traj, c_M_b_traj)
         N = len(c_M_b_traj)
-        print(N)
         x0 = np.zeros(12)  # chosen to be [nu_c, nu_b]
         for i in range(2):
             r = optimize.least_squares(cost.f, x0, jac='2-point', method='lm', verbose=2)

@@ -15,14 +15,14 @@ import utils.posemath as pm
 from utils.wrapper import ErrorWrapper
 
 if __name__ == '__main__':
-
-    aliases = ['legrand1', 'legrand2', 'legrand3', 'legrand4']
+    
     aliases = ['switch1', 'switch3', 'switch4', 'switch5']
-    error_wrapper = ErrorWrapper('obj_000026', 'data/')
+    aliases = ['legrand1', 'legrand2', 'legrand4']
+    error_wrapper = ErrorWrapper('obj_000023', 'data/')
     df = error_wrapper.create_df(aliases)
 
     # formatting the data 
-    X = df[['r', 'theta', 'phi', 'detection_score']]
+    X = df[['r','theta', 'phi', 'detection_score']]
     Y = df[['translation_err_0', 'translation_err_1', 'translation_err_2',
         'angular_err_0', 'angular_err_1', 'angular_err_2']]
     X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.1)
@@ -32,15 +32,15 @@ if __name__ == '__main__':
     model = LinearRegression()
     poly = PolynomialFeatures(degree)
     polyreg=make_pipeline(poly,model)
-    polyreg.fit(X_train,y_train)
+    polyreg.fit(X,Y)
 
     # An example with typical values
-    r = 0.28
-    theta = 0.0
-    phi = 1.0
-    s = 0.99998
+    r = 0.32
+    theta = 0.03
+    phi = 0.42
+    s = 0.999995
     pred = polyreg.predict([[r,theta,phi,s]])
-    print(pred)
+    print(pred[0,:3])
     print(pm.log3_to_euler(pred[0,3:]))
 
     # for degree 2 and 4 variables: 
@@ -73,8 +73,8 @@ if __name__ == '__main__':
 
 
     pred = polyreg.predict(X)
-    plt.plot(X['r'], pred[:,0], '.', label='model')
-    plt.plot(X['r'], Y['translation_err_0'],'.' ,label='groundtruth')
+    plt.plot(X['detection_score'], pred[:,0], '.', label='model')
+    plt.plot(X['detection_score'], Y['translation_err_0'],'.' ,label='groundtruth')
     plt.legend()
     plt.show()
 

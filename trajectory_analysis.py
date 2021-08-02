@@ -97,7 +97,7 @@ def mu_plot(nu_c_list, nu_b_list):
 
 if __name__ == '__main__':
     
-    alias = 'switch1'
+    alias = 'legrand4'
     data_path = 'data/'
 
     df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
@@ -115,6 +115,8 @@ if __name__ == '__main__':
     calibration = np.load(data_path + f'calibration_{alias[:-1]}.npz')
     cm_M_c = pin.SE3(calibration['cm_M_c'])
     bm_M_b = pin.SE3(calibration['bm_M_b'])
+    # cm_M_c = pin.SE3.Identity()
+    # bm_M_b = pin.SE3.Identity()
 
     # correcting the transformation wrt the calibration
     c_M_b_mocap = [cm_M_c.inverse() * bm_M_cm.inverse() * bm_M_b for bm_M_cm in bm_M_cm_traj]
@@ -124,14 +126,14 @@ if __name__ == '__main__':
     poseCosy = np.array([c_M_b.inverse().translation for c_M_b in c_M_b_cosy])
     angleMocap = np.array([pin.log3(c_M_b.rotation) for c_M_b in c_M_b_mocap])
     angleCosy = np.array([pin.log3(c_M_b.rotation) for c_M_b in c_M_b_cosy])
+    rotmatError = [pin.log3((M_mocap * M_cosy.inverse()).rotation) for M_mocap, M_cosy in zip(c_M_b_mocap, c_M_b_cosy)]
     transNorm_mocap = [np.linalg.norm(t) for t in poseMocap]
     transNorm_cosy = [np.linalg.norm(t) for t in poseCosy]
 
     # error values
     trans_err = poseMocap - poseCosy
-    rot_err = angleMocap - angleCosy
     rmse_trans = np.sqrt(np.mean([err*err for err in trans_err]))
-    rmse_rot = np.sqrt(np.mean([err*err for err in rot_err]))*180/3.14
+    rmse_rot = np.sqrt(np.mean([err*err for err in rotmatError]))*180/3.14
     print('rmse translation :' + str(rmse_trans))
     print('rmse rotation : ' + str(rmse_rot))
 
@@ -170,17 +172,10 @@ if __name__ == '__main__':
     plt.legend()
 
     plt.figure('Rotation error')
-    ax1 = plt.subplot(131)
-    ax1.plot(angleMocap[:,0], label='mocap')
-    ax1.plot(angleCosy[:,0], label='cosy')
-    ax2 = plt.subplot(132)
-    ax2.plot(angleMocap[:,1], label='mocap')
-    ax2.plot(angleCosy[:,1], label='cosy')
-    ax3 = plt.subplot(133)
-    ax3.plot(angleMocap[:,2], label='mocap')
-    ax3.plot(angleCosy[:,2], label='cosy')
+    plt.plot(df_cosypose['frame_id'], [np.linalg.norm(angle) for angle in angleMocap], label='mocap')
+    plt.plot(df_cosypose['frame_id'], [np.linalg.norm(angle) for angle in angleCosy], label='cosy')
     plt.legend()
 
-    mu_plot(nu_c_list, nu_b_list)
+    # mu_plot(nu_c_list, nu_b_list)
     plt.show()
   
