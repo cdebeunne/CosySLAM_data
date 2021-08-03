@@ -29,7 +29,7 @@ class CostFrameCalibration:
         for i in range(self.N):
             bm_M_cm = self.bm_M_cm_traj[i]
             c_M_b  = self.c_M_b_cosy_traj[i]
-            res[6*i:6*i+3]   = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).translation*10
+            res[6*i:6*i+3]   = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).translation*20
             # res[6*i+3:6*i+6] = pin.log3((c_M_b * b_M_bm * bm_M_cm * cm_M_c).rotation)
             Rot = (c_M_b * b_M_bm * bm_M_cm * cm_M_c).rotation
             r = R.from_matrix(Rot)

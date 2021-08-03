@@ -56,25 +56,35 @@ if __name__ == '__main__':
 
     # compute RMSE and R2 score 
     y_test_pred = polyreg.predict(X_test)
-    rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+    rmse_trans = np.sqrt(mean_squared_error(y_test[['translation_err_0','translation_err_1','translation_err_2']],
+                y_test_pred[:,:3]))
+    rmse_ang = np.sqrt(mean_squared_error(y_test[['angular_err_0','angular_err_1','angular_err_2']],
+                y_test_pred[:,3:]))
     r2 = r2_score(y_test,y_test_pred)
-    print("RMSE on the test samples:")
-    print(rmse)
+    print("RMSE on the test samples for translation error:")
+    print(rmse_trans)
+    print("RMSE on the test samples for angular error:")
+    print(rmse_ang*180/3.14)
     print("R2 on the test samples: ")
     print(r2)
 
     y_train_pred = polyreg.predict(X_train)
-    rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+    rmse_trans = np.sqrt(mean_squared_error(y_train[['translation_err_0','translation_err_1','translation_err_2']],
+                y_train_pred[:,:3]))
+    rmse_ang = np.sqrt(mean_squared_error(y_train[['angular_err_0','angular_err_1','angular_err_2']],
+                y_train_pred[:,3:]))
     r2 = r2_score(y_train,y_train_pred)
-    print("RMSE on the training samples:")
-    print(rmse)
+    print("RMSE on the training samples for translation error:")
+    print(rmse_trans)
+    print("RMSE on the training samples for angular error:")
+    print(rmse_ang*180/3.14)
     print("R2 on the training samples: ")
     print(r2)
 
 
     pred = polyreg.predict(X)
-    plt.plot(X['detection_score'], pred[:,0], '.', label='model')
-    plt.plot(X['detection_score'], Y['translation_err_0'],'.' ,label='groundtruth')
+    plt.plot(X['theta'], pred[:,0], '.', label='model')
+    plt.plot(X['theta'], Y['translation_err_0'],'.' ,label='groundtruth')
     plt.legend()
     plt.show()
 
