@@ -10,50 +10,72 @@ import sys
 arg 1 : alias of the rosbag
 arg 2 : number of IMU sample
 '''
+SIMU = True
 
 if __name__ == '__main__':
 
     # bag opening 
     alias = sys.argv[1]
     bag = rosbag.Bag(f'{alias}.bag', 'r')
-
-    # we solve an orthogonal Procrustes problem 
-    # b_R_w = argmin R || R*a_g - a_meas ||
-    
-    # a_g is the gravitationnal vector
-    w_g = np.array([0,0,-9.81])
-
-    # a_meas is the average acceleration on N measurements
-    a_meas_arr = []
     N = int(sys.argv[2])
     N_IMU = bag.get_message_count('/imu')
     assert(N <= N_IMU)
-    # fill the measurement list
-    for counter, (topic, msg, t) in enumerate(bag.read_messages(topics=['/imu'])):
-        if counter < N:
-            a_meas_arr.append([msg.linear_acceleration.x,
-                msg.linear_acceleration.y,
-                msg.linear_acceleration.z])
-    
-    # shape : (number of samples, 3) 
-    a_meas_arr = np.array(a_meas_arr)   
 
+    # w_g is the gravitationnal vector
+    w_g = np.array([0,0,-9.81])
+    w_g_mat = np.tile(w_g, N).reshape((N,3))
+
+
+    if not SIMU:
+
+        a_meas_arr = []
+        # fill the measurement list
+        for counter, (topic, msg, t) in enumerate(bag.read_messages(topics=['/imu'])):
+            if counter < N:
+                a_meas_arr.append([msg.linear_acceleration.x,
+                    msg.linear_acceleration.y,
+                    msg.linear_acceleration.z])
+        
+        # shape : (number of samples, 3) 
+        a_meas_arr = np.array(a_meas_arr)   
+
+    if SIMU:
+        # Simulated data instead
+        angle = np.deg2rad(90)
+        dir = np.random.random(3)
+        # dir = np.array([1,1,0])
+        dir = dir/np.linalg.norm(dir)
+        wRb_gtr = R.from_rotvec(angle*dir).as_matrix()
+        print('\nwRb_gtr\n', wRb_gtr)
+        r = R.from_matrix(wRb_gtr)
+        print('As euler angles :')
+        print(r.as_euler('xyz', degrees=True))
+        print('As quaternion : ')
+        print(r.as_quat())
+        a_meas_arr = -wRb_gtr.T @ w_g_mat.T  # + noise  # # (3,N)
+        a_meas_arr = a_meas_arr.T  # (N,3)
+
+    
+
+    # we solve an orthogonal Procrustes problem 
+    # b_R_w = argmin R || R*a_g - a_meas ||
     # solving with linear algebra (https://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem)
     # Wikipedia notations: 
-    A = np.tile(-w_g, N).reshape((N,3)).T
+    A = -w_g_mat.T
     B = a_meas_arr.T
     M = B @ A.T
     U, sig, V_T = np.linalg.svd(M)
     b_R_w = U @ V_T
 
     # display the result!
+    print('\nProcrustes')
     print('b_R_w :')
     print(b_R_w)
-    r = R.from_matrix(b_R_w)
+    r_pro = R.from_matrix(b_R_w)
     print('As euler angles :')
-    print(r.as_euler('xyz', degrees=True))
+    print(r_pro.as_euler('xyz', degrees=True))
     print('As quaternion : ')
-    print(r.as_quat())
+    print(r_pro.as_quat())
 
     # We then solve the same problem with the Rodriguez formula
     a_mean = np.mean(a_meas_arr, axis=0)
@@ -69,13 +91,20 @@ if __name__ == '__main__':
     b_R_w = np.identity(3) + v_skew + (v_skew @ v_skew)/(1+c)
 
     # display the result!
+    print('\nRodriguez')
     print('b_R_w :')
     print(b_R_w)
-    r = R.from_matrix(b_R_w)
+    r_rodr = R.from_matrix(b_R_w)
     print('As euler angles :')
-    print(r.as_euler('xyz', degrees=True))
+    print(r_rodr.as_euler('xyz', degrees=True))
     print('As quaternion : ')
-    print(r.as_quat())
+    print(r_rodr.as_quat())
 
+
+    print('\nProcrustes vs Rodriguez \o--o/ ')
+    rdiff = r_rodr*r_pro.inv()
+    print('As rotvec :')
+    print(rdiff.as_rotvec())
+    print(np.rad2deg(np.linalg.norm(rdiff.as_rotvec())))
 
 
