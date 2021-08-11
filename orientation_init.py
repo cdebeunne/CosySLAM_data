@@ -23,6 +23,7 @@ if __name__ == '__main__':
 
     # w_g is the gravitationnal vector
     w_g = np.array([0,0,-9.81])
+    # w_g = np.array([1,1,1])
     w_g_mat = np.tile(w_g, N).reshape((N,3))
 
 
@@ -47,11 +48,11 @@ if __name__ == '__main__':
         dir = dir/np.linalg.norm(dir)
         wRb_gtr = R.from_rotvec(angle*dir).as_matrix()
         print('\nwRb_gtr\n', wRb_gtr)
-        r = R.from_matrix(wRb_gtr)
+        r_gtr = R.from_matrix(wRb_gtr)
         print('As euler angles :')
-        print(r.as_euler('xyz', degrees=True))
+        print(r_gtr.as_euler('xyz', degrees=True))
         print('As quaternion : ')
-        print(r.as_quat())
+        print(r_gtr.as_quat())
         a_meas_arr = -wRb_gtr.T @ w_g_mat.T  # + noise  # # (3,N)
         a_meas_arr = a_meas_arr.T  # (N,3)
 
@@ -102,9 +103,18 @@ if __name__ == '__main__':
 
 
     print('\nProcrustes vs Rodriguez \o--o/ ')
-    rdiff = r_rodr*r_pro.inv()
-    print('As rotvec :')
-    print(rdiff.as_rotvec())
-    print(np.rad2deg(np.linalg.norm(rdiff.as_rotvec())))
+    rdiff_rodr_pro = r_rodr*r_pro.inv()
+    print(rdiff_rodr_pro.as_rotvec())
+    print(np.rad2deg(np.linalg.norm(rdiff_rodr_pro.as_rotvec())))
 
+    if SIMU:
+        rdiff_pro_gtr = r_pro*r_gtr.inv()
+        print('\nProcrustes vs Ground truth \o--o/ ')
+        print(rdiff_pro_gtr.as_rotvec())
+        print(np.rad2deg(np.linalg.norm(rdiff_pro_gtr.as_rotvec())))
+
+        rdiff_rodr_gtr = r_rodr*r_gtr.inv()
+        print('\Rodriguez vs Ground truth \o--o/ ')
+        print(rdiff_rodr_gtr.as_rotvec())
+        print(np.rad2deg(np.linalg.norm(rdiff_rodr_gtr.as_rotvec())))
 
