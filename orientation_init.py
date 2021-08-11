@@ -32,7 +32,7 @@ if __name__ == '__main__':
         a_meas_arr = []
         # fill the measurement list
         for counter, (topic, msg, t) in enumerate(bag.read_messages(topics=['/imu'])):
-            if counter < N:
+            if counter > N_IMU - N:
                 a_meas_arr.append([msg.linear_acceleration.x,
                     msg.linear_acceleration.y,
                     msg.linear_acceleration.z])
@@ -77,6 +77,9 @@ if __name__ == '__main__':
     print(r_pro.as_euler('xyz', degrees=True))
     print('As quaternion : ')
     print(r_pro.as_quat())
+    print('Is it aligned ?')
+    aligned = np.cross([a_meas_arr[:][0]],(-b_R_w@w_g))
+    print(np.linalg.norm(aligned))
 
     # We then solve the same problem with the Rodriguez formula
     a_mean = np.mean(a_meas_arr, axis=0)
@@ -100,6 +103,9 @@ if __name__ == '__main__':
     print(r_rodr.as_euler('xyz', degrees=True))
     print('As quaternion : ')
     print(r_rodr.as_quat())
+    print('Is it aligned ?')
+    aligned = np.cross([a_meas_arr[:][0]],(-b_R_w@w_g))
+    print(np.linalg.norm(aligned))
 
 
     print('\nProcrustes vs Rodriguez \o--o/ ')
