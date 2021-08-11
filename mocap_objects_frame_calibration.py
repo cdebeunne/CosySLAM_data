@@ -49,6 +49,7 @@ if __name__ == '__main__':
     
     aliases = ['switch1','switch3','switch4','switch5']
     aliases = ['legrand1','legrand2', 'legrand4']
+    aliases = ['campbell1', 'campbell2', 'campbell3']
     data_path = 'data/'
 
     dfs_cosypose = []

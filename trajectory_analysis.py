@@ -97,7 +97,7 @@ def mu_plot(nu_c_list, nu_b_list):
 
 if __name__ == '__main__':
     
-    alias = 'legrand4'
+    alias = 'campbell2'
     data_path = 'data/'
 
     df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
