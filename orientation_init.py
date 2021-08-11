@@ -21,29 +21,28 @@ if __name__ == '__main__':
     # b_R_w = argmin R || R*a_g - a_meas ||
     
     # a_g is the gravitationnal vector
-    a_g = np.transpose(np.array([[0,0,9.81]]))
+    w_g = np.array([0,0,-9.81])
 
     # a_meas is the average acceleration on N measurements
-    a_meas = np.array([0.0,0.0,0.0])
+    a_meas_arr = []
     N = int(sys.argv[2])
     N_IMU = bag.get_message_count('/imu')
-    counter = 0
-    for topic, msg, t in bag.read_messages(topics=['/imu']):
-        if (counter > N_IMU-N):
-            a_t = np.array([msg.linear_acceleration.x,
+    assert(N <= N_IMU)
+    # fill the measurement list
+    for counter, (topic, msg, t) in enumerate(bag.read_messages(topics=['/imu'])):
+        if counter < N:
+            a_meas_arr.append([msg.linear_acceleration.x,
                 msg.linear_acceleration.y,
                 msg.linear_acceleration.z])
-            a_meas += a_t
-        counter += 1
-    a_meas = np.transpose([(1/N)*a_meas])
-    # a_meas = np.transpose(np.array([[0.0,9.81,0.0]]))
-    print('a_meas')
-    print(a_meas)
-    print('a_meas norm')
-    print(np.linalg.norm(a_meas))
+    
+    # shape : (number of samples, 3) 
+    a_meas_arr = np.array(a_meas_arr)   
 
-    # solving with linear algebra
-    M = a_meas @ np.transpose(a_g)
+    # solving with linear algebra (https://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem)
+    # Wikipedia notations: 
+    A = np.tile(-w_g, N).reshape((N,3)).T
+    B = a_meas_arr.T
+    M = B @ A.T
     U, sig, V_T = np.linalg.svd(M)
     b_R_w = U @ V_T
 
@@ -56,11 +55,12 @@ if __name__ == '__main__':
     print('As quaternion : ')
     print(r.as_quat())
 
-    # We then solve the same problem with the Rodriguz formula
-    a_g = a_g/np.linalg.norm(a_g)
-    a_meas = a_meas/np.linalg.norm(a_meas)
-    v = np.cross(np.transpose(a_g)[0], np.transpose(a_meas)[0])
-    c = np.dot(np.transpose(a_g)[0], np.transpose(a_meas)[0])
+    # We then solve the same problem with the Rodriguez formula
+    a_mean = np.mean(a_meas_arr, axis=0)
+    w_g_norm = w_g/np.linalg.norm(w_g)
+    a_norm = a_mean/np.linalg.norm(a_mean)
+    v = np.cross(w_g_norm, a_norm)
+    c = np.dot(w_g_norm, a_norm)
     s = np.linalg.norm(v)
     v_skew = np.array([[0, -v[2], v[1]],
         [v[2], 0, -v[0]],
