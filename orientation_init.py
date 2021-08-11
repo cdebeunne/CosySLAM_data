@@ -82,8 +82,8 @@ if __name__ == '__main__':
     a_mean = np.mean(a_meas_arr, axis=0)
     w_g_norm = w_g/np.linalg.norm(w_g)
     a_norm = a_mean/np.linalg.norm(a_mean)
-    v = np.cross(w_g_norm, a_norm)
-    c = np.dot(w_g_norm, a_norm)
+    v = np.cross(-w_g_norm, a_norm)
+    c = np.dot(-w_g_norm, a_norm)
     s = np.linalg.norm(v)
     v_skew = np.array([[0, -v[2], v[1]],
         [v[2], 0, -v[0]],
