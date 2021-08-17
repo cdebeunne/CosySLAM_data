@@ -18,7 +18,8 @@ if __name__ == '__main__':
     
     aliases = ['switch1', 'switch3', 'switch4', 'switch5']
     aliases = ['legrand1', 'legrand2', 'legrand4']
-    error_wrapper = ErrorWrapper('obj_000023', 'data/')
+    aliases = ['campbell1', 'campbell2', 'campbell3']
+    error_wrapper = ErrorWrapper('obj_000004', 'data/')
     df = error_wrapper.create_df(aliases)
 
     # formatting the data 
@@ -35,7 +36,7 @@ if __name__ == '__main__':
     polyreg.fit(X,Y)
 
     # An example with typical values
-    r = 0.32
+    r = 0.35
     theta = 0.03
     phi = 0.42
     s = 0.999995
@@ -83,8 +84,8 @@ if __name__ == '__main__':
 
 
     pred = polyreg.predict(X)
-    plt.plot(X['theta'], pred[:,0], '.', label='model')
-    plt.plot(X['theta'], Y['translation_err_0'],'.' ,label='groundtruth')
+    plt.plot(X['r'], pred[:,0], '.', label='model')
+    plt.plot(X['r'], Y['translation_err_0'],'.' ,label='groundtruth')
     plt.legend()
     plt.show()
 

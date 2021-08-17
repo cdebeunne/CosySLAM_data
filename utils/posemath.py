@@ -36,3 +36,9 @@ def isometry_to_transform(M):
 
     transf = Pose(translation, quat)
     return transf
+
+def angle_between_vecs(a, b):
+    cross = np.cross(a, b)
+    sintheta = np.linalg.norm(cross)/(np.linalg.norm(a)*np.linalg.norm(b))
+    angle = np.arcsin(sintheta)
+    return angle

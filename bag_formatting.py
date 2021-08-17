@@ -16,6 +16,13 @@ import utils.posemath as pm
 
 from scipy.spatial.transform import Rotation as R
 
+"""
+Produces the rosbag that contains both imu and cosyobject messages
+for cosyslam with IMU
+
+It requires the pickle with cosypose results and the initial rosbag
+"""
+
 if __name__ == '__main__':
 
     alias = sys.argv[1]
@@ -37,6 +44,7 @@ if __name__ == '__main__':
         exp_path = data_path + f'{alias}.bag'
         exp_bag = rosbag.Bag(exp_path, "r")
         t_shift = -0.0399050196972
+        t_shift = 0
         counter = 0
         for topic, msg, t in exp_bag.read_messages(topics=['/camera/imu']):
             t = t.to_sec()

@@ -1,6 +1,82 @@
 import numpy as np
+from pandas._libs.tslibs import timestamps
 import pinocchio as pin
 import pandas as pd
+import rosbag
+import rospy
+import apriltag
+import cv2
+from cv_bridge import CvBridge
+
+class ApriltagWrapper:
+    def __init__(self, bag, tag_size, mtx, dist):
+        self.bag = bag
+        self.tag_size = tag_size
+        self.mtx = mtx
+        self.dist = dist
+    
+    def trajectory_generation(self):
+        bridge = CvBridge()
+        timestamp = []
+        pose_list = []
+
+        for _, msg, t in self.bag.read_messages(topics=['/camera/color/image_raw']):
+            cv_img = bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+            # BGR to GRAY
+            gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+
+            # AprilTag detection
+            options = apriltag.DetectorOptions(families="tag36h11")
+            detector = apriltag.Detector(options)
+            results = detector.detect(gray)
+            num_detections = len(results)
+
+            # Pose estimation
+            imgPointsArr = []
+            objPointsArr = []
+            opointsArr = []
+
+            if num_detections > 0:
+                for i, detection in enumerate(results):
+                    imagePoints = detection.corners.reshape(1,4,2)  
+
+                    ob_pt1 = [-self.tag_size/2, -self.tag_size/2, 0.0]
+                    ob_pt2 = [ self.tag_size/2, -self.tag_size/2, 0.0]
+                    ob_pt3 = [ self.tag_size/2,  self.tag_size/2, 0.0]
+                    ob_pt4 = [-self.tag_size/2,  self.tag_size/2, 0.0]
+                    ob_pts = ob_pt1 + ob_pt2 + ob_pt3 + ob_pt4
+                    object_pts = np.array(ob_pts).reshape(4,3)
+
+                    opoints = np.array([
+                        -1, -1, 0,
+                        1, -1, 0,
+                        1,  1, 0,
+                        -1,  1, 0,
+                        -1, -1, -2*1,
+                        1, -1, -2*1,
+                        1,  1, -2*1,
+                        -1,  1, -2*1,
+                    ]).reshape(-1, 1, 3) * 0.5*self.tag_size
+                        
+                    imgPointsArr.append(imagePoints)
+                    objPointsArr.append(object_pts)
+                    opointsArr.append(opoints)
+
+                    # mtx - the camera calibration's intrinsics
+                    _, rvec, tvec = cv2.solvePnP(object_pts, imagePoints, self.mtx, self.dist, flags=cv2.SOLVEPNP_ITERATIVE)
+                    rvec = np.array([rvec[0,0], rvec[1,0], rvec[2,0]])
+                    tvec = np.array([tvec[0,0], tvec[1,0], tvec[2,0]])
+                    rotMat,_ = cv2.Rodrigues(rvec)
+                    pose = np.zeros((4,4))
+                    pose[0:3,0:3] = rotMat
+                    pose[0:3,3] = tvec
+                    pose_list.append(pose)
+                    timestamp.append(t.secs + t.nsecs*10e-10)
+        df_apriltag = pd.DataFrame({
+            "timestamp" : timestamp,
+            "pose" : pose_list,
+        })
+        return df_apriltag
 
 class MocapWrapper:
     def __init__(self, df_mocap):
@@ -13,7 +89,6 @@ class MocapWrapper:
     def trajectory_generation(self, df_cosypose):
         """
         returns the mocap trajectory synchronized with the camera timestamp
-        optionnaly add a delta_t if the ts is not synchro
         """
         # timestamp setting
         df_cosypose['timestamp'] -= df_cosypose['timestamp'][0]
@@ -53,6 +128,9 @@ class ErrorWrapper:
         self.scene = []
     
     def create_df(self, aliases):
+        """
+        creates the dataframe for error statistics
+        """
         delta_count = 0
         for alias in aliases:
             calibration_path = self.data_path + f'calibration_{alias[:-1]}.npz'

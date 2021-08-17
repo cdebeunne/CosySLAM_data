@@ -4,22 +4,21 @@ from numpy import linalg
 from geometry_msgs.msg import Pose, Point, Quaternion
 from scipy.spatial.transform import Rotation as R
 import numpy as np
+import utils.posemath as pm
 import rosbag
 import rospy
 import sys
 
 '''
+Gives the initial orientation of an IMU
+
 arg 1 : alias of the rosbag
 arg 2 : number of IMU sample
 '''
 SIMU = False
 
 
-def angle_between_vecs(a, b):
-    cross = np.cross(a, b)
-    sintheta = np.linalg.norm(cross)/(np.linalg.norm(a)*np.linalg.norm(b))
-    angle = np.arcsin(sintheta)
-    return angle
+
 
 if __name__ == '__main__':
 
@@ -41,7 +40,7 @@ if __name__ == '__main__':
         a_meas_arr = []
         # fill the measurement list
         for counter, (topic, msg, t) in enumerate(bag.read_messages(topics=['/imu'])):
-            if counter >= N_IMU - N:
+            if counter < N:
                 a_meas_arr.append([msg.linear_acceleration.x,
                     msg.linear_acceleration.y,
                     msg.linear_acceleration.z])
@@ -53,7 +52,7 @@ if __name__ == '__main__':
         # Simulated data instead
         angle = np.deg2rad(90)
         dir = np.random.random(3)
-        # dir = np.array([1,1,0])
+        dir = np.array([1,0,0])
         dir = dir/np.linalg.norm(dir)
         wRb_gtr = R.from_rotvec(angle*dir).as_matrix()
         print('\nwRb_gtr\n', wRb_gtr)
@@ -87,8 +86,11 @@ if __name__ == '__main__':
     print('As quaternion : ')
     print(r_pro.as_quat())
     print('Is it aligned ?')
-    angle = angle_between_vecs(a_meas_arr[:][0], -b_R_w@w_g)
+    avg_acc = np.mean(a_meas_arr, axis=0)
+    angle = pm.angle_between_vecs(avg_acc, -b_R_w@w_g)
     print(np.rad2deg(angle))
+    print('We need the quaternion of w_R_b :')
+    print(r_pro.inv().as_quat())
 
     # We then solve the same problem with the Rodriguez formula
     a_mean = np.mean(a_meas_arr, axis=0)
@@ -113,8 +115,12 @@ if __name__ == '__main__':
     print('As quaternion : ')
     print(r_rodr.as_quat())
     print('Is it aligned ?')
-    angle = angle_between_vecs(a_meas_arr[:][0], -b_R_w@w_g)
+    angle = pm.angle_between_vecs(avg_acc, -b_R_w@w_g)
     print(np.rad2deg(angle))
+    print(b_R_w.T @ avg_acc)
+    print('We need the quaternion of w_R_b :')
+    print(r_rodr.inv().as_quat())
+
 
 
     print('\nProcrustes vs Rodriguez \o--o/ ')

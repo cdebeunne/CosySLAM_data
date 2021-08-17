@@ -8,6 +8,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from utils.wrapper import MocapWrapper
 
+"""
+Extrinsic calibration between mocap and cosypose by minimizing
+the translation and rotation error on a set of trajectories
+
+Returns cmMc and bmMb in a npz file
+"""
+
 
 class CostFrameCalibration:
     def __init__(self, bm_M_cm_traj, c_M_b_cosy_traj):
