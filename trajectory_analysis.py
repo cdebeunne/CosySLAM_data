@@ -97,11 +97,12 @@ def mu_plot(nu_c_list, nu_b_list):
 
 if __name__ == '__main__':
     
-    alias = 'campbell1'
+    alias = 'switch1'
     data_path = 'data/'
 
     df_cosypose = pd.read_pickle(data_path+f'results_{alias}_ts.pkl')
     df_cosypose = df_cosypose.loc[df_cosypose['pose'].notnull()]
+    df_cosypose = df_cosypose.loc[df_cosypose['object_name'] == 'obj_000026']
     df_gt = pd.read_pickle(data_path + f'groundtruth_{alias}.pkl')
     mocap_wrapper = MocapWrapper(df_gt)
 
@@ -109,7 +110,7 @@ if __name__ == '__main__':
     c_M_b_cosy = [pin.SE3(T) for T in df_cosypose['pose']]
     
     # moCap trajectory, synchronized with cosypose's ts
-    bm_M_cm_traj, timestamp = mocap_wrapper.trajectory_generation(df_cosypose)
+    bm_M_cm_traj, _,_,_ = mocap_wrapper.trajectory_generation(df_cosypose)
     
     # loading calibration data
     calibration = np.load(data_path + f'calibration_{alias[:-1]}.npz')
@@ -171,11 +172,11 @@ if __name__ == '__main__':
     ax3.plot(poseCosy[:,2], label='cosy')
     plt.legend()
 
-    plt.figure('Rotation error')
-    plt.plot(df_cosypose['frame_id'], [np.linalg.norm(angle) for angle in angleMocap], label='mocap')
-    plt.plot(df_cosypose['frame_id'], [np.linalg.norm(angle) for angle in angleCosy], label='cosy')
-    plt.legend()
+    # plt.figure('Rotation error')
+    # plt.plot(df_cosypose['frame_id'], [np.linalg.norm(angle) for angle in angleMocap], label='mocap')
+    # plt.plot(df_cosypose['frame_id'], [np.linalg.norm(angle) for angle in angleCosy], label='cosy')
+    # plt.legend()
 
-    # mu_plot(nu_c_list, nu_b_list)
+    mu_plot(nu_c_list, nu_b_list)
     plt.show()
   

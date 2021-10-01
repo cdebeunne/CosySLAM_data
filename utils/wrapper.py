@@ -5,8 +5,6 @@ import pandas as pd
 import rosbag
 import rospy
 import apriltag
-import cv2
-from cv_bridge import CvBridge
 
 class ApriltagWrapper:
     def __init__(self, bag, tag_size, mtx, dist):
@@ -16,6 +14,8 @@ class ApriltagWrapper:
         self.dist = dist
     
     def trajectory_generation(self):
+        import cv2
+        from cv_bridge import CvBridge
         bridge = CvBridge()
         timestamp = []
         pose_list = []
@@ -96,6 +96,8 @@ class MocapWrapper:
         # variable init
         timestamp = []
         bm_M_cm_traj = []
+        m_M_cm_traj = []
+        m_M_bm_traj = []
 
         # moCap trajectory, synchronized with cosypose's ts
         for ts in df_cosypose['timestamp']:
@@ -105,8 +107,10 @@ class MocapWrapper:
             idxCm = self.df_mocap['cmTimestamp'].sub(float(ts)).abs().idxmin()
             m_M_cm = pin.SE3(self.df_mocap.loc[idxCm,'mTcm'])
             bm_M_cm_traj.append(m_M_bm.inverse() * m_M_cm)
+            m_M_cm_traj.append(m_M_cm)
+            m_M_bm_traj.append(m_M_bm)
 
-        return bm_M_cm_traj, timestamp
+        return bm_M_cm_traj, m_M_cm_traj, m_M_bm_traj, timestamp
 
 class ErrorWrapper:
     def __init__(self, object_name, data_path):
@@ -147,7 +151,7 @@ class ErrorWrapper:
             cosy_score = df_cosypose['detection_score'].values
     
             # moCap trajectory, synchronized with cosypose's ts
-            bm_M_cm_traj, _ = mocap_wrapper.trajectory_generation(df_cosypose)
+            bm_M_cm_traj, _,_,_= mocap_wrapper.trajectory_generation(df_cosypose)
             delta_count += 1
             
             # loading calibration data

@@ -11,15 +11,18 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
 import utils.posemath as pm
 from utils.wrapper import ErrorWrapper
 
 if __name__ == '__main__':
     
-    aliases = ['switch1', 'switch3', 'switch4', 'switch5']
     aliases = ['legrand1', 'legrand2', 'legrand4']
     aliases = ['campbell1', 'campbell2', 'campbell3']
-    error_wrapper = ErrorWrapper('obj_000004', 'data/')
+    aliases = ['newLegrand1', 'newLegrand2', 'newLegrand3', 'newLegrand4', 'newLegrand5']
+    aliases = ['switch1', 'switch4', 'switch5']
+    error_wrapper = ErrorWrapper('obj_000026', 'data/')
     df = error_wrapper.create_df(aliases)
 
     # formatting the data 
@@ -37,8 +40,8 @@ if __name__ == '__main__':
 
     # An example with typical values
     r = 0.35
-    theta = 0.03
-    phi = 0.42
+    theta = np.mean(X['theta'])
+    phi = np.mean(X['phi'])
     s = 0.999995
     pred = polyreg.predict([[r,theta,phi,s]])
     print(pred[0,:3])
@@ -84,9 +87,25 @@ if __name__ == '__main__':
 
 
     pred = polyreg.predict(X)
-    plt.plot(X['r'], pred[:,0], '.', label='model')
-    plt.plot(X['r'], Y['translation_err_0'],'.' ,label='groundtruth')
+    plt.plot(X['phi'], pred[:,0], '.', label='model')
+    plt.plot(X['phi'], Y['translation_err_0'],'.' ,label='groundtruth')
     plt.legend()
     plt.show()
+
+    s_list = np.linspace(0.98,1,100)
+    X_det = [[0.4,theta,phi,s] for s in s_list]
+    pred_det = polyreg.predict(X_det)
+    trans_err = [np.linalg.norm(np.array([x,y,z])) for x,y,z in zip(pred_det[:,0],pred_det[:,1], pred_det[:,2])]
+    plt.plot(s_list, trans_err)
+    plt.show()
+
+    r_list = np.linspace(0.3,0.8,100)
+    X_det = [[r,0.0,0.25,0.999993] for r in r_list]
+    pred_det = polyreg.predict(X_det)
+    trans_err = [np.linalg.norm(np.array([x,y,z])) for x,y,z in zip(pred_det[:,0],pred_det[:,1], pred_det[:,2])]
+    np.savez('plot_data.npz', X_det=X_det, trans_err=trans_err)
+    plt.plot(r_list, trans_err)
+    plt.show()
+
 
 

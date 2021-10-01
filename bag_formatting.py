@@ -36,29 +36,33 @@ if __name__ == '__main__':
     cosy_object = df_cosypose['object_name'].values
     cosy_ts = df_cosypose['timestamp'].values
 
-    bag = rosbag.Bag(f'{alias}.bag', 'w')
+    bag = rosbag.Bag(f'{alias}_wolf.bag', 'w')
 
     # Writing IMU message if available
     enable_imu = True
     if enable_imu:
         exp_path = data_path + f'{alias}.bag'
         exp_bag = rosbag.Bag(exp_path, "r")
-        t_shift = -0.0399050196972
-        t_shift = 0
         counter = 0
+        t_shift = 0.046
         for topic, msg, t in exp_bag.read_messages(topics=['/camera/imu']):
-            t = t.to_sec()
-            t = t - t_shift
-            t = rospy.Time.from_sec(t)
-            bag.write('/imu', msg, t)
+            t_init_imu = msg.header.stamp.to_sec()
+            t_init_imu = t_init_imu - t_shift
+            t_init_imu = rospy.Time.from_sec(t_init_imu)
+            #t = msg.header.stamp 
+            print('------')
+            print(msg.header.stamp.to_sec())
+            print('vs')
+            print(t.to_sec())
+            bag.write('/imu', msg, t_init_imu)
 
         exp_bag.close()
 
     dt = 1/30
-    t_cur = cosy_ts[0]
+    t_cur = cosy_ts[0] 
     cosy_array = []
     for i in range(len(cosy_score)):
-        t = cosy_ts[i]
+        t = cosy_ts[i] 
         
         if (t == t_cur):
             header = Header()
