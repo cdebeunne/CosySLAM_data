@@ -4,6 +4,14 @@ from geometry_msgs.msg import Pose, Point, Quaternion
 from scipy.spatial.transform import Rotation as R
 import rospy
 
+def vec_to_isometry(vec):
+    r = R.from_quat(vec[3:])
+    rot_mat = r.as_matrix()
+    M = pin.SE3.Identity()
+    M.translation = vec[:3]
+    M.rotation = rot_mat
+    return M
+
 def log3_to_euler(omega):
     rot_mat = pin.exp3(omega)
     r = R.from_matrix(rot_mat)
