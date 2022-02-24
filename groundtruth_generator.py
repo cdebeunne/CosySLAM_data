@@ -29,7 +29,7 @@ class MocapSLAMCalibration:
         self.x_arr.append(x)
         mocap_nu_slam = x[:6]  # currently estimated transfo as se3 6D vector representation
         cm_nu_camera = x[6:12]
-        scale = x[12]
+        scale = x[12] # scale necessary for visual slam only
         mocap_M_slam = pin.exp6(mocap_nu_slam)  # currently estimated transfo as SE3 Lie group
         cm_M_camera = pin.exp6(cm_nu_camera)
 
@@ -48,30 +48,31 @@ class MocapSLAMCalibration:
 
 if __name__ == '__main__':
     bag_gt_path = sys.argv[1]
-    bag_orb_path = sys.argv[2]
+    bag_vins_path = sys.argv[2]
 
     # open rosbags
     bag_mocap = rosbag.Bag(bag_gt_path, "r")
-    bag_orb = rosbag.Bag(bag_orb_path, "r")
+    bag_vins = rosbag.Bag(bag_vins_path, "r")
 
     # compute the trajectory
-    orbWrapper = SLAMWrapper(bag_orb, bag_mocap)
-    mocap_M_cm_traj, orb_M_camera_traj, timestamp = orbWrapper.trajectory_generation()
+    vinsWrapper = SLAMWrapper(bag_vins, bag_mocap)
+    mocap_M_cm_traj, vins_M_camera_traj, timestamp = vinsWrapper.trajectory_generation()
 
     # Calibration between mocap and slam frames
-    cost = MocapSLAMCalibration(mocap_M_cm_traj, orb_M_camera_traj)
+    cost = MocapSLAMCalibration(mocap_M_cm_traj, vins_M_camera_traj)
     N = len(mocap_M_cm_traj)
     x0 = np.zeros(13)  # chosen to be [nu_c, nu_b]
     x0[12] = 1
+    # x0 = np.zeros(12)
     r = optimize.least_squares(cost.f, x0, jac='2-point', method='lm', verbose=2)
-    mocap_M_orb = pin.exp6(r.x[:6])
+    mocap_M_vins = pin.exp6(r.x[:6])
     cm_M_camera = pin.exp6(r.x[6:12])
     scale = r.x[12]
 
     print('transform mocap camera frame to optical frame')
     print(cm_M_camera)
     print('transform mocap fram to slam frame')
-    print(mocap_M_orb)
+    print(mocap_M_vins)
     print('scale')
     print(scale)
 
@@ -98,16 +99,16 @@ if __name__ == '__main__':
 
     # plt.show()
 
-    for elem in orb_M_camera_traj:
-        elem.translation = elem.translation * scale
+    for elem in vins_M_camera_traj:
+        elem.translation = elem.translation * 1.5
 
     groundtruth = np.array([(mocap_M_cm * cm_M_camera).translation for mocap_M_cm in mocap_M_cm_traj])
-    slam = np.array([(mocap_M_orb * orb_M_camera).translation for orb_M_camera in orb_M_camera_traj])
+    slam = np.array([(mocap_M_vins * vins_M_camera).translation for vins_M_camera in vins_M_camera_traj])
 
     fig = plt.figure('Trajectory comparison')
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111)
     ax.scatter(groundtruth[:,0], groundtruth[:,1], groundtruth[:,2], label='mocap')
-    ax.scatter(slam[:,0], slam[:,1], slam[:,2], label='ORBSLAM3')
+    ax.scatter(slam[:,0], slam[:,1], slam[:,2], label='VINS FUSION')
     plt.legend()
     plt.show()
 

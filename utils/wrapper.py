@@ -26,16 +26,16 @@ class SLAMWrapper:
             trans_vec = np.concatenate((translation, quaternion))
             mocap_M_camera = pm.vec_to_isometry(trans_vec)
             mocap_M_camera_traj.append(mocap_M_camera)
-
+            
             ts = msg.header.stamp.secs + msg.header.stamp.nsecs*1e-9
             ts_mocap.append(ts)
         
-        for _, msg, t in self.bag_slam.read_messages(topics=['/tf']):
-            msg = msg.transforms[0]
-            translation = np.array([msg.transform.translation.x, msg.transform.translation.y,
-                                msg.transform.translation.z])
-            quaternion = np.array([msg.transform.rotation.x, msg.transform.rotation.y,
-                                msg.transform.rotation.z, msg.transform.rotation.w])
+        for _, msg, t in self.bag_slam.read_messages(topics=['/loop_fusion/odometry_rect']):
+            transform = msg.pose.pose
+            translation = np.array([transform.position.x, transform.position.y,
+                                transform.position.z])
+            quaternion = np.array([transform.orientation.x, transform.orientation.y,
+                                transform.orientation.z, transform.orientation.w])
             trans_vec = np.concatenate((translation, quaternion))
             slam_M_camera = pm.vec_to_isometry(trans_vec)
             slam_M_camera_traj.append(slam_M_camera)
@@ -43,26 +43,24 @@ class SLAMWrapper:
             ts = msg.header.stamp.secs + msg.header.stamp.nsecs*1e-9
             ts_slam.append(ts)
 
-        df_slam = pd.DataFrame({
-                "timestamp" : ts_slam,
-                "pose" : slam_M_camera_traj,
-            })
         df_mocap = pd.DataFrame({
                 "timestamp" : ts_mocap,
-                "pose" : mocap_M_camera_traj,
+            })
+        df_slam = pd.DataFrame({
+                "timestamp" : ts_slam,
             })
         
         df_slam['timestamp'] = df_slam['timestamp'] - df_slam['timestamp'][0]
         df_mocap['timestamp'] = df_mocap['timestamp'] - df_mocap['timestamp'][0]
         
         # moCap trajectory, synchronized with slam's ts
-        mocap_M_camera_traj.clear()
+        mocap_M_camera_traj_1 = []
         for ts in df_slam['timestamp']:
             idx = df_mocap['timestamp'].sub(float(ts)).abs().idxmin()
-            mocap_M_camera = df_mocap.loc[idx,'pose']
-            mocap_M_camera_traj.append(mocap_M_camera)
+            mocap_M_camera = mocap_M_camera_traj[idx]
+            mocap_M_camera_traj_1.append(mocap_M_camera)
         
-        return mocap_M_camera_traj, slam_M_camera_traj, ts_slam
+        return mocap_M_camera_traj_1, slam_M_camera_traj, ts_slam
 
 class ApriltagWrapper:
     def __init__(self, bag, tag_size, mtx, dist):
