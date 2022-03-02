@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import utils.posemath as pm
 import pandas as pd
 from utils.wrapper import SLAMWrapper
+import seaborn as sns
 
 import rosbag
 import rospy
@@ -50,65 +51,79 @@ if __name__ == '__main__':
     bag_gt_path = sys.argv[1]
     bag_vins_path = sys.argv[2]
 
-    # open rosbags
-    bag_mocap = rosbag.Bag(bag_gt_path, "r")
-    bag_vins = rosbag.Bag(bag_vins_path, "r")
+    bag_vins_path_list =['results_tless_circular_dt11.bag', 'results_tless_circular_dt20.bag', 'results_tless_circular_dt30.bag', 'results_tless_circular_dt45.bag']
+    slam_traj_list = []
 
-    # compute the trajectory
-    vinsWrapper = SLAMWrapper(bag_vins, bag_mocap)
-    mocap_M_cm_traj, vins_M_camera_traj, timestamp = vinsWrapper.trajectory_generation()
+    for bag_vins_path in bag_vins_path_list:
+        # open rosbags
+        bag_mocap = rosbag.Bag(bag_gt_path, "r")
+        bag_vins = rosbag.Bag(bag_vins_path, "r")
 
-    # Calibration between mocap and slam frames
-    cost = MocapSLAMCalibration(mocap_M_cm_traj, vins_M_camera_traj)
-    N = len(mocap_M_cm_traj)
-    x0 = np.zeros(13)  # chosen to be [nu_c, nu_b]
-    x0[12] = 1
-    # x0 = np.zeros(12)
-    r = optimize.least_squares(cost.f, x0, jac='2-point', method='lm', verbose=2)
-    mocap_M_vins = pin.exp6(r.x[:6])
-    cm_M_camera = pin.exp6(r.x[6:12])
-    scale = r.x[12]
+        # compute the trajectory
+        vinsWrapper = SLAMWrapper(bag_vins, bag_mocap)
+        mocap_M_cm_traj_complete, mocap_M_cm_traj, vins_M_camera_traj, timestamp = vinsWrapper.trajectory_generation()
 
-    print('transform mocap camera frame to optical frame')
-    print(cm_M_camera)
-    print('transform mocap fram to slam frame')
-    print(mocap_M_vins)
-    print('scale')
-    print(scale)
+        # Calibration between mocap and slam frames
+        cost = MocapSLAMCalibration(mocap_M_cm_traj, vins_M_camera_traj)
+        N = len(mocap_M_cm_traj)
+        x0 = np.zeros(13)  # chosen to be [nu_c, nu_b]
+        x0[12] = 1
+        # x0 = np.zeros(12)
+        r = optimize.least_squares(cost.f, x0, jac='2-point', method='lm', verbose=2)
+        mocap_M_vins = pin.exp6(r.x[:6])
+        cm_M_camera = pin.exp6(r.x[6:12])
+        scale = r.x[12]
 
-    # residuals RMSE
-    res = r.fun.reshape((N, 3))
-    rmse_trans = np.sqrt(np.mean([err*err for err in res]))
-    print('translation error')
-    print(rmse_trans)
+        print('transform mocap camera frame to optical frame')
+        print(cm_M_camera)
+        print('transform mocap fram to slam frame')
+        print(mocap_M_vins)
+        print('scale')
+        print(scale)
 
-    # examine the problem jacobian at the solution
-    J = r.jac
-    H = J.T @ J
-    u, s, vh = np.linalg.svd(H, full_matrices=True)
+        # residuals RMSE
+        res = r.fun.reshape((N, 3))
+        rmse_trans = np.sqrt(np.mean([err*err for err in res]))
+        print('translation error')
+        print(rmse_trans)
 
-    # plt.figure('cost evolution')
-    # plt.plot(np.arange(len(cost.cost_arr)), np.log(cost.cost_arr))
-    # plt.xlabel('Iterations')
-    # plt.ylabel('Residuals norm')
+        # examine the problem jacobian at the solution
+        J = r.jac
+        H = J.T @ J
+        u, s, vh = np.linalg.svd(H, full_matrices=True)
 
-    # plt.figure('Hessian singular values')
-    # plt.bar(np.arange(len(s)), np.log(s))
-    # plt.xlabel('degrees of freedom')
-    # plt.ylabel('log(s)')
+        # plt.figure('cost evolution')
+        # plt.plot(np.arange(len(cost.cost_arr)), np.log(cost.cost_arr))
+        # plt.xlabel('Iterations')
+        # plt.ylabel('Residuals norm')
 
-    # plt.show()
+        # plt.figure('Hessian singular values')
+        # plt.bar(np.arange(len(s)), np.log(s))
+        # plt.xlabel('degrees of freedom')
+        # plt.ylabel('log(s)')
 
-    for elem in vins_M_camera_traj:
-        elem.translation = elem.translation * 1.5
+        # plt.show()
 
-    groundtruth = np.array([(mocap_M_cm * cm_M_camera).translation for mocap_M_cm in mocap_M_cm_traj])
-    slam = np.array([(mocap_M_vins * vins_M_camera).translation for vins_M_camera in vins_M_camera_traj])
+        for elem in vins_M_camera_traj:
+            elem.translation = elem.translation * scale
 
+        groundtruth = np.array([(mocap_M_cm * cm_M_camera).translation for mocap_M_cm in mocap_M_cm_traj_complete])
+        slam = np.array([(mocap_M_vins * vins_M_camera).translation for vins_M_camera in vins_M_camera_traj])
+        slam_traj_list.append(slam)
+
+    sns.set_theme(style="darkgrid")
     fig = plt.figure('Trajectory comparison')
-    ax = fig.add_subplot(111)
-    ax.scatter(groundtruth[:,0], groundtruth[:,1], groundtruth[:,2], label='mocap')
-    ax.scatter(slam[:,0], slam[:,1], slam[:,2], label='VINS FUSION')
+    plt.plot(groundtruth[:,0], groundtruth[:,1], '.', markersize=3, label='mocap')
+    plt.plot(slam_traj_list[0][:len(slam)-20,0], slam_traj_list[0][:len(slam)-20,1], '.',  markersize=3, label='CosySLAM $\Delta_t$=1.0s')
+    plt.plot(slam_traj_list[1][:len(slam)-20,0], slam_traj_list[1][:len(slam)-20,1], '.',  markersize=3, label='CosySLAM $\Delta_t$=2.0s')
+    plt.plot(slam_traj_list[2][:len(slam)-20,0], slam_traj_list[2][:len(slam)-20,1], '.',  markersize=3, label='CosySLAM $\Delta_t$=3.0s')
+    plt.plot(slam_traj_list[3][:len(slam)-20,0], slam_traj_list[3][:len(slam)-20,1], '.',  markersize=3, label='CosySLAM $\Delta_t$=5.0s')
+    lgnd = plt.legend(loc="lower left", scatterpoints=5, fontsize=10)
+    lgnd.legendHandles[0]._sizes = [50]
+    lgnd.legendHandles[1]._sizes = [50]
+    plt.xlabel('x(m)')
+    plt.ylabel('y(m)')
+
     plt.legend()
     plt.show()
 

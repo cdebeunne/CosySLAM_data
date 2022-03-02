@@ -18,8 +18,13 @@ class SLAMWrapper:
         ts_mocap = []
         slam_M_camera_traj = []
         ts_slam = []
-        
+        counter = 0
+        t_lim = 1000
+
         for _, msg, t in self.bag_mocap.read_messages(topics=['/qualisys/realsense']):
+            if (counter == 0):
+                ts_init = msg.header.stamp.secs + msg.header.stamp.nsecs*1e-9
+                counter += 1
             translation = np.array([msg.position.x, msg.position.y, msg.position.z])
             quaternion = np.array([msg.orientation.x, msg.orientation.y,
                                 msg.orientation.z, msg.orientation.w])
@@ -28,10 +33,11 @@ class SLAMWrapper:
             mocap_M_camera_traj.append(mocap_M_camera)
             
             ts = msg.header.stamp.secs + msg.header.stamp.nsecs*1e-9
-            ts_mocap.append(ts)
-        
-        for _, msg, t in self.bag_slam.read_messages(topics=['/loop_fusion/odometry_rect']):
-            transform = msg.pose.pose
+            ts_mocap.append(ts-ts_init)
+            if (ts-ts_init > t_lim): break
+
+        for _, msg, t in self.bag_slam.read_messages(topics=['/robot_pose']):
+            transform = msg.pose
             translation = np.array([transform.position.x, transform.position.y,
                                 transform.position.z])
             quaternion = np.array([transform.orientation.x, transform.orientation.y,
@@ -60,7 +66,7 @@ class SLAMWrapper:
             mocap_M_camera = mocap_M_camera_traj[idx]
             mocap_M_camera_traj_1.append(mocap_M_camera)
         
-        return mocap_M_camera_traj_1, slam_M_camera_traj, ts_slam
+        return mocap_M_camera_traj, mocap_M_camera_traj_1, slam_M_camera_traj, ts_slam
 
 class ApriltagWrapper:
     def __init__(self, bag, tag_size, mtx, dist):
