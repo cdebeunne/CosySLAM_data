@@ -16,6 +16,13 @@ sns.set()
 import utils.posemath as pm
 from utils.wrapper import ErrorWrapper
 
+"""
+The script to produce the polynomial error models
+
+Enter the aliases of the trajectories you need to fit your model 
+and specify the object label for the errorWrapper in the main
+"""
+
 if __name__ == '__main__':
     
     aliases = ['legrand1', 'legrand2', 'legrand4']

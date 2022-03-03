@@ -15,6 +15,14 @@ import wolf_ros_objectslam.msg as msg_cp
 import utils.posemath as pm
 from scipy.spatial.transform import Rotation as R
 
+"""
+A script to add the timestamp from the rosbag to cosypose's detection data stored in
+pkl files
+takes results_scenario.pkl and returns results_scenario_ts.pkl
+
+arg 1 : alias 
+"""
+
 if __name__ == '__main__':
 
     alias = sys.argv[1]

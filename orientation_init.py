@@ -17,9 +17,6 @@ arg 2 : number of IMU sample
 '''
 SIMU = False
 
-
-
-
 if __name__ == '__main__':
 
     # bag opening 

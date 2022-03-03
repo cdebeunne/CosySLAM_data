@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import sys
-
-sys.path.insert(0, "/home/cdebeunne/catkin_ws/src")
 import numpy as np
 import pandas as pd
 # from joblib import load
@@ -21,6 +19,9 @@ Produces the rosbag that contains both imu and cosyobject messages
 for cosyslam with IMU
 
 It requires the pickle with cosypose results and the initial rosbag
+
+arg 1 : alias
+
 """
 
 if __name__ == '__main__':
@@ -44,24 +45,10 @@ if __name__ == '__main__':
         exp_path = data_path + f'{alias}.bag'
         exp_bag = rosbag.Bag(exp_path, "r")
         counter = 0
-        t_shift = 0.046
-        t_shift = 0
+
         for topic, msg, t in exp_bag.read_messages(topics=['/camera/imu']):
-            t_init_imu = msg.header.stamp.to_sec()
-            t_init_imu = t_init_imu - t_shift
-            t_init_imu = rospy.Time.from_sec(t_init_imu)
-            #t = msg.header.stamp 
-            # if (counter < 2):
-            #     print('------')
-            #     print(counter)
-            #     print('-------')
-            #     print(msg.header.stamp.to_sec())
-            #     print('vs')
-            #     print(t.to_sec())
-            #     continue
-            if (counter>2):
-                bag.write('/imu', msg, t_init_imu)
-            counter += 1
+            t_imu = msg.header.stamp
+            bag.write('/imu', msg, t_imu)
 
         exp_bag.close()
 
@@ -74,7 +61,6 @@ if __name__ == '__main__':
         if (t == t_cur):
             header = Header()
             ts = rospy.Time.from_sec(t)
-            # ts = t
             header.stamp = ts
             header.seq = i
             header.frame_id = str(i)
@@ -96,7 +82,6 @@ if __name__ == '__main__':
             cosy_array = []
             header = Header()
             ts = rospy.Time.from_sec(t)
-            # ts = t
             header.stamp = ts
             header.seq = i
             header.frame_id = str(i)

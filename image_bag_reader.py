@@ -4,6 +4,12 @@ import cv2
 import sys
 from cv_bridge import CvBridge
 
+"""
+A simple script to write images from a rosbag as png
+
+arg 1 : rosbag path
+"""
+
 if __name__ == '__main__':
 
     rosbag_path = sys.argv[1]

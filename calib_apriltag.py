@@ -16,6 +16,12 @@ from cv_bridge import CvBridge
 from mocap_objects_frame_calibration import CostFrameCalibration
 import utils.posemath as pm
 
+"""
+Calibration script with april tags
+
+arg 1 : alias
+"""
+
 if __name__ == '__main__':
     alias = sys.argv[1]
     camera = 'd435'

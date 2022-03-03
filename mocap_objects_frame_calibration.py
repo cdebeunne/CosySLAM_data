@@ -14,6 +14,10 @@ Extrinsic calibration between mocap and cosypose by minimizing
 the translation and rotation error on a set of trajectories
 
 Returns cmMc and bmMb in a npz file
+
+it works on several trajectories, set the aliases you want in the 
+main
+
 """
 
 

@@ -10,6 +10,11 @@ from gepetto.corbaserver import tools
 import time
 import utils.posemath as pm
 
+"""
+Display the trajectory with gepetto viewer
+Launch gepetto-gui in another terminal before running
+"""
+
 def GepettoViewerServer(windowName="python-pinocchio", sceneName="world", loadModel=False):
     """
     Init gepetto-viewer by loading the gui and creating a window.

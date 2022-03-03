@@ -116,8 +116,6 @@ if __name__ == '__main__':
     calibration = np.load(data_path + f'calibration_{alias[:-1]}.npz')
     cm_M_c = pin.SE3(calibration['cm_M_c'])
     bm_M_b = pin.SE3(calibration['bm_M_b'])
-    # cm_M_c = pin.SE3.Identity()
-    # bm_M_b = pin.SE3.Identity()
 
     # correcting the transformation wrt the calibration
     c_M_b_mocap = [cm_M_c.inverse() * bm_M_cm.inverse() * bm_M_b for bm_M_cm in bm_M_cm_traj]
